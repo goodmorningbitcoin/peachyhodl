@@ -449,19 +449,12 @@ function useLivestreamData() {
         const now = Math.floor(Date.now() / 1000);
         const oneDayAgo = now - (24 * 60 * 60);
 
-        // First get live events where Peachy is a participant
-        const allEvents = await nostr.query([{
+        // Get Peachy's own live events
+        const peachyEvents = await nostr.query([{
           kinds: [30311],
-          limit: 100,
+          authors: [PEACHY_HEX],
+          since: oneDayAgo,
         }], { signal: abortController.signal });
-
-        // Filter for events where Peachy is a participant
-        const peachyEvents = allEvents.filter(event => {
-          // Check if Peachy's pubkey is in any p tag
-          return event.tags.some(tag => 
-            tag[0] === 'p' && tag[1] === PEACHY_HEX
-          );
-        });
 
         // Find the most recent live event
         const currentLiveEvent = peachyEvents
