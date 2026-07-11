@@ -13,11 +13,11 @@ export function PsychedelicBitcoinVisualizer({
   isPlaying = false 
 }: PsychedelicBitcoinVisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | undefined>(undefined);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
-  const dataArrayRef = useRef<Uint8Array | null>(null);
+  const dataArrayRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [hasAudioData, setHasAudioData] = useState(false);
   const [corsBlocked, setCorsBlocked] = useState(false);
@@ -136,10 +136,10 @@ export function PsychedelicBitcoinVisualizer({
       time += 0.016; // ~60fps
       
       // Get frequency data if available, otherwise use default animation
-      let bassLevel = 0.3;
-      let midLevel = 0.3;
-      let trebleLevel = 0.3;
-      let overallLevel = 0.3;
+      let bassLevel: number;
+      let midLevel: number;
+      let trebleLevel: number;
+      let overallLevel: number;
 
       if (analyser && dataArray) {
         try {

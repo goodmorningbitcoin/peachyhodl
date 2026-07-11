@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Twitch, Zap, LogOut, LogIn, Gift, Heart, Users, Sparkles, Crown, UserPlus } from "lucide-react";
+import { Loader2, Tv, Zap, LogOut, LogIn, Gift, Heart, Users, Sparkles, Crown, UserPlus } from "lucide-react";
 import { useNostr } from "@nostrify/react";
 import { useAuthor } from "@/hooks/useAuthor";
 import { genUserName } from "@/lib/genUserName";
@@ -17,7 +17,7 @@ import { ReactionButton } from "@/components/reactions/ReactionButton";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useMessageModeration } from "@/hooks/useMessageModeration";
 import { isUserMentioned } from "@/lib/mentions";
-import LoginDialog from "@/components/auth/LoginDialog";
+import AuthDialog from "@/components/auth/AuthDialog";
 import { ZapButton } from "@/components/ZapButton";
 import type { NostrEvent } from "@nostrify/nostrify";
 import type { TwitchMessage } from "@/lib/twitch";
@@ -316,7 +316,7 @@ function TwitchChatMessage({ message, isNew }: TwitchChatMessageProps) {
             {!isSpecialEvent && (
               <>
                 <Badge variant="outline" className="text-xs flex-shrink-0">
-                  <Twitch className="h-3 w-3 mr-1" />
+                  <Tv className="h-3 w-3 mr-1" />
                   Twitch
                 </Badge>
                 {message.isBroadcaster && (
@@ -449,19 +449,12 @@ function useLivestreamData() {
         const now = Math.floor(Date.now() / 1000);
         const oneDayAgo = now - (24 * 60 * 60);
 
-        // First get live events where Peachy is a participant
-        const allEvents = await nostr.query([{
+        // Get Peachy's own live events
+        const peachyEvents = await nostr.query([{
           kinds: [30311],
-          limit: 100,
+          authors: [PEACHY_HEX],
+          since: oneDayAgo,
         }], { signal: abortController.signal });
-
-        // Filter for events where Peachy is a participant
-        const peachyEvents = allEvents.filter(event => {
-          // Check if Peachy's pubkey is in any p tag
-          return event.tags.some(tag => 
-            tag[0] === 'p' && tag[1] === PEACHY_HEX
-          );
-        });
 
         // Find the most recent live event
         const currentLiveEvent = peachyEvents
@@ -725,10 +718,6 @@ export function UnifiedLivestreamChat() {
     setIsLoginDialogOpen(false);
   };
 
-  const handleLoginSuccess = () => {
-    setIsLoginDialogOpen(false);
-  };
-
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Header */}
@@ -758,7 +747,7 @@ export function UnifiedLivestreamChat() {
               {isTwitchAuthenticated ? (
                 <>
                   <Badge variant={isTwitchConnected ? "default" : "secondary"}>
-                    <Twitch className="h-3 w-3 mr-1" />
+                    <Tv className="h-3 w-3 mr-1" />
                     {isTwitchConnected ? 'EventSub Connected' : 'EventSub Connecting...'}
                   </Badge>
                   <Button
@@ -815,7 +804,7 @@ export function UnifiedLivestreamChat() {
                         variant="secondary"
                         onClick={handleTwitchAuth}
                       >
-                        <Twitch className="h-4 w-4 mr-2" />
+                        <Tv className="h-4 w-4 mr-2" />
                         Connect Twitch to see follows, bits, and subs
                       </Button>
                     )}
@@ -867,10 +856,9 @@ export function UnifiedLivestreamChat() {
       </div>
       
       {/* Login Dialog */}
-      <LoginDialog
+      <AuthDialog
         isOpen={isLoginDialogOpen}
         onClose={handleLoginClose}
-        onLogin={handleLoginSuccess}
       />
     </div>
   );

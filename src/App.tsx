@@ -3,9 +3,10 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createHead, UnheadProvider } from '@unhead/react/client';
-import { InferSeoMetaPlugin } from '@unhead/addons';
+import { InferSeoMetaPlugin } from 'unhead/plugins';
 import { Suspense } from 'react';
 import NostrProvider from '@/components/NostrProvider';
+import { NostrSync } from '@/components/NostrSync';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +15,7 @@ import { AppProvider } from '@/components/AppProvider';
 import { NWCProvider } from '@/contexts/NWCContext';
 import { MusicPlayerProvider } from '@/contexts/MusicPlayerContext';
 import { AppConfig } from '@/contexts/AppContext';
+import { APP_RELAYS } from '@/lib/appRelays';
 import AppRouter from './AppRouter';
 
 const head = createHead({
@@ -34,23 +36,26 @@ const queryClient = new QueryClient({
 
 const defaultConfig: AppConfig = {
   theme: "light",
-  relayUrl: "wss://relay.primal.net",
+  relayMetadata: APP_RELAYS,
+  blossomServerMetadata: {
+    servers: [
+      'https://blossom.ditto.pub/',
+      'https://blossom.dreamith.to/',
+      'https://blossom.primal.net/',
+    ],
+    updatedAt: 0,
+  },
+  useAppBlossomServers: true,
 };
-
-const presetRelays = [
-  { url: 'wss://ditto.pub/relay', name: 'Ditto' },
-  { url: 'wss://relay.nostr.band', name: 'Nostr.Band' },
-  { url: 'wss://relay.damus.io', name: 'Damus' },
-  { url: 'wss://relay.primal.net', name: 'Primal' },
-];
 
 export function App() {
   return (
     <UnheadProvider head={head}>
-      <AppProvider storageKey="nostr:app-config" defaultConfig={defaultConfig} presetRelays={presetRelays}>
+      <AppProvider storageKey="nostr:app-config" defaultConfig={defaultConfig}>
         <QueryClientProvider client={queryClient}>
           <NostrLoginProvider storageKey='nostr:login'>
             <NostrProvider>
+              <NostrSync />
               <NWCProvider>
                 <MusicPlayerProvider>
                   <TooltipProvider>

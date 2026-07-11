@@ -28,7 +28,7 @@ export function PictureCard({ picture }: PictureCardProps) {
               <div
                 className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20"
                 style={{
-                  background: `linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--accent) / 0.2))`,
+                  background: `linear-gradient(135deg, color-mix(in srgb, var(--primary) 20%, transparent), color-mix(in srgb, var(--accent) 20%, transparent))`,
                 }}
               />
             )}
