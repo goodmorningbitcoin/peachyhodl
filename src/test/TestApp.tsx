@@ -23,7 +23,17 @@ export function TestApp({ children }: TestAppProps) {
 
   const defaultConfig: AppConfig = {
     theme: 'light',
-    relayUrl: 'wss://relay.nostr.band',
+    relayMetadata: {
+      relays: [
+        { url: 'wss://relay.primal.net', read: true, write: true },
+      ],
+      updatedAt: 0,
+    },
+    blossomServerMetadata: {
+      servers: ['https://blossom.primal.net/'],
+      updatedAt: 0,
+    },
+    useAppBlossomServers: true,
   };
 
   return (

@@ -23,45 +23,50 @@ interface RelaySelectorProps {
 
 export function RelaySelector(props: RelaySelectorProps) {
   const { className } = props;
-  const { config, updateConfig, presetRelays = [] } = useAppContext();
-  
-  const selectedRelay = config.relayUrl;
-  const setSelectedRelay = (relay: string) => {
-    updateConfig((current) => ({ ...current, relayUrl: relay }));
-  };
+  const { config, updateConfig } = useAppContext();
 
+  const relays = config.relayMetadata.relays;
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
 
-  const selectedOption = presetRelays.find((option) => option.url === selectedRelay);
-
-  // Function to normalize relay URL by adding wss:// if no protocol is present
   const normalizeRelayUrl = (url: string): string => {
     const trimmed = url.trim();
     if (!trimmed) return trimmed;
-    
-    // Check if it already has a protocol
     if (trimmed.includes('://')) {
       return trimmed;
     }
-    
-    // Add wss:// prefix
     return `wss://${trimmed}`;
   };
 
-  // Handle adding a custom relay
-  const handleAddCustomRelay = (url: string) => {
-    setSelectedRelay?.(normalizeRelayUrl(url));
+  const handleAddRelay = (url: string) => {
+    const normalized = normalizeRelayUrl(url);
+    const exists = relays.some(r => r.url === normalized);
+    if (!exists) {
+      updateConfig((current) => ({
+        ...current,
+        relayMetadata: {
+          relays: [...current.relayMetadata!.relays, { url: normalized, read: true, write: true }],
+          updatedAt: current.relayMetadata!.updatedAt,
+        },
+      }));
+    }
     setOpen(false);
     setInputValue("");
   };
 
-  // Check if input value looks like a valid relay URL
+  const handleRemoveRelay = (url: string) => {
+    updateConfig((current) => ({
+      ...current,
+      relayMetadata: {
+        relays: current.relayMetadata!.relays.filter(r => r.url !== url),
+        updatedAt: current.relayMetadata!.updatedAt,
+      },
+    }));
+  };
+
   const isValidRelayInput = (value: string): boolean => {
     const trimmed = value.trim();
     if (!trimmed) return false;
-    
-    // Basic validation - should contain at least a domain-like structure
     const normalized = normalizeRelayUrl(trimmed);
     try {
       new URL(normalized);
@@ -83,11 +88,9 @@ export function RelaySelector(props: RelaySelectorProps) {
           <div className="flex items-center gap-2">
             <Wifi className="h-4 w-4" />
             <span className="truncate">
-              {selectedOption 
-                ? selectedOption.name 
-                : selectedRelay 
-                  ? selectedRelay.replace(/^wss?:\/\//, '')
-                  : "Select relay..."
+              {relays.length > 0
+                ? `${relays.length} relay${relays.length > 1 ? 's' : ''}`
+                : "Select relay..."
               }
             </span>
           </div>
@@ -96,8 +99,8 @@ export function RelaySelector(props: RelaySelectorProps) {
       </PopoverTrigger>
       <PopoverContent className="w-[300px] p-0">
         <Command>
-          <CommandInput 
-            placeholder="Search relays or type URL..." 
+          <CommandInput
+            placeholder="Search relays or type URL..."
             value={inputValue}
             onValueChange={setInputValue}
           />
@@ -105,7 +108,7 @@ export function RelaySelector(props: RelaySelectorProps) {
             <CommandEmpty>
               {inputValue && isValidRelayInput(inputValue) ? (
                 <CommandItem
-                  onSelect={() => handleAddCustomRelay(inputValue)}
+                  onSelect={() => handleAddRelay(inputValue)}
                   className="cursor-pointer"
                 >
                   <Plus className="mr-2 h-4 w-4" />
@@ -123,37 +126,33 @@ export function RelaySelector(props: RelaySelectorProps) {
               )}
             </CommandEmpty>
             <CommandGroup>
-              {presetRelays
-                .filter((option) => 
-                  !inputValue || 
-                  option.name.toLowerCase().includes(inputValue.toLowerCase()) ||
-                  option.url.toLowerCase().includes(inputValue.toLowerCase())
+              {relays
+                .filter((relay) =>
+                  !inputValue ||
+                  relay.url.toLowerCase().includes(inputValue.toLowerCase())
                 )
-                .map((option) => (
+                .map((relay) => (
                   <CommandItem
-                    key={option.url}
-                    value={option.url}
-                    onSelect={(currentValue) => {
-                      setSelectedRelay(normalizeRelayUrl(currentValue));
+                    key={relay.url}
+                    value={relay.url}
+                    onSelect={() => {
+                      handleRemoveRelay(relay.url);
                       setOpen(false);
                       setInputValue("");
                     }}
                   >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        selectedRelay === option.url ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    <div className="flex flex-col">
-                      <span className="font-medium">{option.name}</span>
-                      <span className="text-xs text-muted-foreground">{option.url}</span>
+                    <Check className="mr-2 h-4 w-4 opacity-100" />
+                    <div className="flex flex-col flex-1">
+                      <span className="font-medium">{relay.url.replace(/^wss?:\/\//, '')}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {relay.read && relay.write ? 'read + write' : relay.read ? 'read' : 'write'}
+                      </span>
                     </div>
                   </CommandItem>
                 ))}
               {inputValue && isValidRelayInput(inputValue) && (
                 <CommandItem
-                  onSelect={() => handleAddCustomRelay(inputValue)}
+                  onSelect={() => handleAddRelay(inputValue)}
                   className="cursor-pointer border-t"
                 >
                   <Plus className="mr-2 h-4 w-4" />

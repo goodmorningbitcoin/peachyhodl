@@ -260,29 +260,21 @@ export function useZaps(
       }
 
       // Create zap request - determine if we're zapping a profile or event
-      // If kind is 0 (profile metadata), zap the profile directly (no e/a tag)
-      // For other kinds, include appropriate event reference
-      let event;
-      if (actualTarget.kind === 0) {
-        // Profile zap - no event reference needed
-        event = undefined;
-      } else if (actualTarget.kind >= 30000 && actualTarget.kind < 40000) {
-        // Addressable event - use 'a' tag
-        event = actualTarget;
-      } else {
-        // Regular event - use 'e' tag  
-        event = actualTarget.id;
-      }
-
       const zapAmount = amount * 1000; // convert to millisats
 
-      const zapRequest = nip57.makeZapRequest({
-        profile: actualTarget.pubkey,
-        event: event,
-        amount: zapAmount,
-        relays: [config.relayUrl],
-        comment
-      });
+      const zapRequest = actualTarget.kind === 0
+        ? nip57.makeZapRequest({
+            pubkey: actualTarget.pubkey,
+            amount: zapAmount,
+            relays: config.relayMetadata.relays.filter(r => r.write).map(r => r.url),
+            comment
+          })
+        : nip57.makeZapRequest({
+            event: actualTarget,
+            amount: zapAmount,
+            relays: config.relayMetadata.relays.filter(r => r.write).map(r => r.url),
+            comment
+          });
 
       // Sign the zap request (but don't publish to relays - only send to LNURL endpoint)
       if (!user.signer) {
