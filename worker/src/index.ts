@@ -7,7 +7,8 @@
  *
  * Env/secrets (set via `wrangler secret put` — managed from GitHub Secrets):
  *   TWITCH_CLIENT_ID      required — the Twitch application client id
- *   TWITCH_CLIENT_SECRET  required for refresh-token mode and the setup flow
+ *   TWITCH_CLIENT_SECRET  optional — only needed for Confidential client
+ *                         types; Peachy's app is Public (PKCE), no secret
  *   TWITCH_REFRESH_TOKEN  preferred — long-lived refresh token (offline_access),
  *                         auto-refreshes the access token; no manual upkeep
  *   TWITCH_ACCESS_TOKEN   fallback — manual user access token (expires ~60d);
@@ -57,9 +58,6 @@ function json(data: unknown, status = 200, origin?: string | null): Response {
 
 /** Exchange the refresh token for a fresh access token. */
 async function refreshAccessToken(env: Env): Promise<{ access: string; refresh?: string; expiresIn: number }> {
-  if (!env.TWITCH_CLIENT_SECRET) {
-    throw new Error('refresh-mode-not-configured');
-  }
   // Twitch rotates refresh tokens on refresh ("refresh tokens may change —
   // store the new one"). The newest one lives in KV; the GitHub secret holds
   // the original bootstrap value. Prefer KV, fall back to the secret.
@@ -78,12 +76,16 @@ async function refreshAccessToken(env: Env): Promise<{ access: string; refresh?:
   }
   const body = new URLSearchParams({
     client_id: env.TWITCH_CLIENT_ID,
-    client_secret: env.TWITCH_CLIENT_SECRET,
     grant_type: 'refresh_token',
     // URLSearchParams form-encodes; the docs warn refresh tokens may contain
     // restricted characters and must be URL encoded.
     refresh_token: refreshToken,
   });
+  // Confidential clients send their secret; Public clients (Peachy's app)
+  // must NOT — PKCE-issued grants refresh with client_id alone.
+  if (env.TWITCH_CLIENT_SECRET) {
+    body.set('client_secret', env.TWITCH_CLIENT_SECRET);
+  }
   const res = await fetch('https://id.twitch.tv/oauth2/token', { method: 'POST', body });
   const data = await res.json() as { access_token?: string; refresh_token?: string; expires_in?: number };
   if (!res.ok || !data.access_token) {
