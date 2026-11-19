@@ -57,14 +57,32 @@ function json(data: unknown, status = 200, origin?: string | null): Response {
 
 /** Exchange the refresh token for a fresh access token. */
 async function refreshAccessToken(env: Env): Promise<{ access: string; refresh?: string; expiresIn: number }> {
-  if (!env.TWITCH_REFRESH_TOKEN || !env.TWITCH_CLIENT_SECRET) {
+  if (!env.TWITCH_CLIENT_SECRET) {
+    throw new Error('refresh-mode-not-configured');
+  }
+  // Twitch rotates refresh tokens on refresh ("refresh tokens may change —
+  // store the new one"). The newest one lives in KV; the GitHub secret holds
+  // the original bootstrap value. Prefer KV, fall back to the secret.
+  let refreshToken = env.TWITCH_REFRESH_TOKEN ?? null;
+  if (env.TWITCH_KV) {
+    try {
+      const raw = await env.TWITCH_KV.get('token');
+      if (raw) {
+        const t = JSON.parse(raw) as CachedToken;
+        if (t.refresh_token) refreshToken = t.refresh_token;
+      }
+    } catch { /* fall back to env */ }
+  }
+  if (!refreshToken) {
     throw new Error('refresh-mode-not-configured');
   }
   const body = new URLSearchParams({
     client_id: env.TWITCH_CLIENT_ID,
     client_secret: env.TWITCH_CLIENT_SECRET,
     grant_type: 'refresh_token',
-    refresh_token: env.TWITCH_REFRESH_TOKEN,
+    // URLSearchParams form-encodes; the docs warn refresh tokens may contain
+    // restricted characters and must be URL encoded.
+    refresh_token: refreshToken,
   });
   const res = await fetch('https://id.twitch.tv/oauth2/token', { method: 'POST', body });
   const data = await res.json() as { access_token?: string; refresh_token?: string; expires_in?: number };
